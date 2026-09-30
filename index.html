@@ -54,10 +54,15 @@
   <footer>F &amp; F · 10.10.2026</footer>
 
 <script>
+const CLOUD_NAME = 'xdphuome';
+const UPLOAD_PRESET = 'casamento_flavia_felipe';
+const UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
 const photos = document.getElementById('photos');
 const selected = document.getElementById('selected');
 const send = document.getElementById('send');
 const status = document.getElementById('status');
+const guest = document.getElementById('guest');
 
 photos.addEventListener('change', () => {
   const n = photos.files.length;
@@ -71,8 +76,70 @@ photos.addEventListener('change', () => {
   }
 });
 
-send.addEventListener('click', () => {
-  status.innerHTML = '✓ O visual do site está pronto. Agora vamos conectar o armazenamento privado para ativar o envio.';
+function safeContextValue(value) {
+  return value.replace(/[|=\n\r]/g, ' ').trim().slice(0, 200);
+}
+
+function uploadOne(file, guestName, index, total) {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('upload_preset', UPLOAD_PRESET);
+    if (guestName) form.append('context', `convidado=${safeContextValue(guestName)}`);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', UPLOAD_URL);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        status.textContent = `Enviando foto ${index + 1} de ${total} — ${pct}%`;
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else {
+        let msg = 'Falha no envio.';
+        try { msg = JSON.parse(xhr.responseText)?.error?.message || msg; } catch {}
+        reject(new Error(msg));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Falha de conexão durante o envio.'));
+    xhr.send(form);
+  });
+}
+
+send.addEventListener('click', async () => {
+  const files = Array.from(photos.files);
+  if (!files.length) return;
+
+  const invalid = files.find(f => !f.type.startsWith('image/'));
+  if (invalid) {
+    status.textContent = 'Selecione apenas arquivos de imagem.';
+    return;
+  }
+
+  send.disabled = true;
+  send.classList.remove('ready');
+  const originalText = send.textContent;
+  send.textContent = 'Enviando...';
+
+  try {
+    const guestName = guest.value.trim();
+    for (let i = 0; i < files.length; i++) {
+      await uploadOne(files[i], guestName, i, files.length);
+    }
+    status.innerHTML = '✓ Fotos recebidas! Obrigado por registrar esse momento com a gente ♡';
+    photos.value = '';
+    selected.style.display = 'none';
+    send.textContent = 'Fotos enviadas';
+  } catch (err) {
+    status.textContent = `Não foi possível concluir o envio: ${err.message}`;
+    send.disabled = false;
+    send.classList.add('ready');
+    send.textContent = originalText;
+  }
 });
 </script>
 </body>
