@@ -90,17 +90,39 @@ function renderQueue() {
 
 photos.addEventListener('change', () => {
   const existing = new Set(queuedFiles.map(fileKey));
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  let oversized = 0;
+  let invalid = 0;
+
   for (const file of Array.from(photos.files)) {
-    if (file.type.startsWith('image/') && !existing.has(fileKey(file))) {
+    if (!file.type.startsWith('image/')) {
+      invalid++;
+      continue;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      oversized++;
+      continue;
+    }
+    if (!existing.has(fileKey(file))) {
       queuedFiles.push(file);
       existing.add(fileKey(file));
     }
   }
-  // Important: clear the native input so a later camera/gallery selection
-  // adds to our queue instead of replacing the previous selection.
+
+  // Limpa o seletor nativo para que novas fotos sejam somadas à fila.
   photos.value = '';
-  status.textContent = '';
   renderQueue();
+
+  if (oversized) {
+    status.innerHTML =
+      `⚠ ${oversized === 1 ? 'Uma foto não foi adicionada' : `${oversized} fotos não foram adicionadas`} ` +
+      `porque ${oversized === 1 ? 'ela ultrapassa' : 'elas ultrapassam'} 10 MB. ` +
+      `Tente enviar ${oversized === 1 ? 'essa foto' : 'essas fotos'} em tamanho menor.`;
+  } else if (invalid) {
+    status.textContent = '⚠ Selecione apenas arquivos de imagem.';
+  } else {
+    status.textContent = '';
+  }
 });
 
 function safeContextValue(value) {
