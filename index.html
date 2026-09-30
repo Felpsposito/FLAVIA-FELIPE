@@ -11,7 +11,8 @@
   <style>
     :root{--paper:#f5f1e8;--ink:#203028;--muted:#68736d;--accent:#385346;--line:#d9d3c7}
     *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font-family:Montserrat,Arial,sans-serif}
-    .hero{min-height:58vh;position:relative;background:url('foto-flavia-felipe.jpg') center 64%/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;padding:38px 22px}
+    .hero{min-height:58vh;position:relative;display:flex;align-items:flex-end;justify-content:center;padding:38px 22px;overflow:hidden}
+    .hero:before{content:"";position:absolute;inset:0;background:url("foto-flavia-felipe.jpg") center 64%/cover no-repeat;filter:grayscale(100%) contrast(1.05);transform:scale(1.002)}
     .hero:after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06),rgba(0,0,0,.10) 48%,rgba(0,0,0,.64))}
     .heroText{position:relative;z-index:1;text-align:center;color:white;text-shadow:0 2px 20px rgba(0,0,0,.25)}
     h1{font-family:"Cormorant Garamond",serif;font-weight:500;font-size:clamp(46px,12vw,78px);line-height:.95;margin:0}
