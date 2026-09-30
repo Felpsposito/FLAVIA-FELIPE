@@ -43,7 +43,7 @@
     <label for="guest">SEU NOME <span style="font-weight:300">(OPCIONAL)</span></label>
     <input id="guest" type="text" maxlength="80" placeholder="Como podemos identificar suas fotos?">
 
-    <label class="upload" for="photos">＋ &nbsp; Escolher minhas fotos</label>
+    <label class="upload" for="photos">＋ &nbsp; Adicionar fotos</label>
     <input id="photos" type="file" accept="image/*" multiple>
     <div class="hint">Você pode selecionar várias fotos de uma vez.</div>
 
@@ -64,16 +64,43 @@ const send = document.getElementById('send');
 const status = document.getElementById('status');
 const guest = document.getElementById('guest');
 
-photos.addEventListener('change', () => {
-  const n = photos.files.length;
-  if(n){
-    selected.style.display='block';
-    selected.textContent = n === 1 ? '1 foto selecionada.' : `${n} fotos selecionadas.`;
-    send.disabled=false; send.classList.add('ready');
-    status.textContent='';
+let queuedFiles = [];
+
+function fileKey(file) {
+  return `${file.name}|${file.size}|${file.lastModified}`;
+}
+
+function renderQueue() {
+  const n = queuedFiles.length;
+  if (n) {
+    selected.style.display = 'block';
+    selected.innerHTML =
+      `<strong>${n === 1 ? '1 foto pronta para enviar' : `${n} fotos prontas para enviar`}</strong><br>` +
+      `<span style="font-size:11px;color:#818983">Você pode tocar em “Adicionar fotos” novamente para incluir mais.</span>`;
+    send.disabled = false;
+    send.classList.add('ready');
+    send.textContent = n === 1 ? 'Enviar 1 foto' : `Enviar ${n} fotos`;
   } else {
-    selected.style.display='none'; send.disabled=true; send.classList.remove('ready');
+    selected.style.display = 'none';
+    send.disabled = true;
+    send.classList.remove('ready');
+    send.textContent = 'Enviar fotos';
   }
+}
+
+photos.addEventListener('change', () => {
+  const existing = new Set(queuedFiles.map(fileKey));
+  for (const file of Array.from(photos.files)) {
+    if (file.type.startsWith('image/') && !existing.has(fileKey(file))) {
+      queuedFiles.push(file);
+      existing.add(fileKey(file));
+    }
+  }
+  // Important: clear the native input so a later camera/gallery selection
+  // adds to our queue instead of replacing the previous selection.
+  photos.value = '';
+  status.textContent = '';
+  renderQueue();
 });
 
 function safeContextValue(value) {
@@ -111,36 +138,31 @@ function uploadOne(file, guestName, index, total) {
 }
 
 send.addEventListener('click', async () => {
-  const files = Array.from(photos.files);
-  if (!files.length) return;
+  if (!queuedFiles.length) return;
 
-  const invalid = files.find(f => !f.type.startsWith('image/'));
-  if (invalid) {
-    status.textContent = 'Selecione apenas arquivos de imagem.';
-    return;
-  }
-
+  const filesToSend = [...queuedFiles];
   send.disabled = true;
   send.classList.remove('ready');
-  const originalText = send.textContent;
   send.textContent = 'Enviando...';
 
   try {
     const guestName = guest.value.trim();
-    for (let i = 0; i < files.length; i++) {
-      await uploadOne(files[i], guestName, i, files.length);
+    for (let i = 0; i < filesToSend.length; i++) {
+      await uploadOne(filesToSend[i], guestName, i, filesToSend.length);
     }
-    status.innerHTML = '✓ Fotos recebidas! Obrigado por registrar esse momento com a gente ♡';
-    photos.value = '';
-    selected.style.display = 'none';
+    queuedFiles = [];
+    renderQueue();
     send.textContent = 'Fotos enviadas';
+    status.innerHTML = `✓ ${filesToSend.length === 1 ? 'Foto recebida' : `${filesToSend.length} fotos recebidas`}! Obrigado por registrar esse momento com a gente ♡`;
   } catch (err) {
     status.textContent = `Não foi possível concluir o envio: ${err.message}`;
     send.disabled = false;
     send.classList.add('ready');
-    send.textContent = originalText;
+    send.textContent = filesToSend.length === 1 ? 'Tentar enviar 1 foto' : `Tentar enviar ${filesToSend.length} fotos`;
   }
 });
+
+renderQueue();
 </script>
 </body>
 </html>
